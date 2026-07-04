@@ -6,27 +6,28 @@ on:
       SoC:
         description: "芯片型号 // SoC to build"
         required: true
-        default: 'sm8750'
+        default: 'sm8650'
 
       FILE:
         description: "配置文件名 // Configuration file name"
         required: true
         type: choice
         options:
+          - oneplus_12_u
           - oneplus_13_v
           - oneplus_13t_v
           - oneplus_ace5_pro_v
-        default: oneplus_13_v
+        default: oneplus_12_u
 
       Chipset:
         description: "开发板代号 // Chipset codename"
         required: true
-        default: 'sun'
+        default: 'pineapple'
 
       VERSION:
         description: "版本格式 // Format: android15-6.6 [Android版本-内核版本]"
         required: true
-        default: 'android15-6.6'
+        default: 'android14-6.1'
 
       KERNEL_NAME:
         description: "内核名称后缀 // Kernel name suffix"
@@ -272,11 +273,23 @@ jobs:
           cd "$COMMON"
           git status
           cat "$DEFCONFIG"
-
+      - name: Apply QQ Scheduler patches
+        run: |
+          cd "$COMMON"
+          git clone https://github.com/WildKernels/kernel_patches.git --depth=1
+          for patchfile in kernel_patches/common/*.patch; do
+            echo "Trying: $patchfile"
+            if patch -p1 --dry-run -F 3 < "$patchfile" 2>/dev/null; then
+              patch -p1 -F 3 < "$patchfile" && echo "OK: $patchfile" || echo "FAIL: $patchfile"
+            else
+              echo "SKIP(conflict): $patchfile"
+            fi
+          done
+          rm -rf kernel_patches
       - name: Build kernel # 构建内核
         run: |
           cd "$WORKSPACE"
-
+         
           BUILD_TYPE="gki"
           if [ "${{ inputs.Chipset }}" == "sun" ]; then
             BUILD_TYPE="perf"
